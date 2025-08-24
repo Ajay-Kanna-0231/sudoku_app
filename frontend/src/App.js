@@ -67,7 +67,7 @@ function SudokuBoard({puzzle}) {
 function DifficultyButtons({ setPuzzle }) {
   const handleDifficultyClick = async (difficulty) => {
     try {
-      const response = await axios.get(`http://localhost:5000/generate-puzzle?difficulty=${difficulty}`);
+      const response = await axios.get(`/api/generate-puzzle?difficulty=${difficulty}`);
       setPuzzle(response.data.puzzle);
     } catch (error) {
       alert("Backend error: " + error.message);  // show on screen instead of just console

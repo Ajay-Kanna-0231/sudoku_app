@@ -1,9 +1,14 @@
 from flask import Flask, jsonify, request
-import random
+import random, os
 from copy import deepcopy
 from flask_cors import CORS
+from flask import send_from_directory
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    static_folder="../frontend/build",   # serve built React files
+    static_url_path=""                  # so root `/` works
+)
 CORS(app)
 
 GRID_SIZE = 9
@@ -99,14 +104,14 @@ def generate_puzzle(clues=30):
 
     return puzzle, solution
 
-@app.route("/generate-puzzle", methods=["GET"])
+@app.route("/api/generate-puzzle", methods=["GET"])
 def generate_puzzle_endpoint():
     difficulty = request.args.get("difficulty", "medium").lower()
     clues = {"easy": 36, "medium": 32, "hard": 28}.get(difficulty, 32)
     puzzle, solution = generate_puzzle(clues=clues)
     return jsonify(puzzle=puzzle, solution=solution)
 
-@app.route("/solve-puzzle", methods=["POST"])
+@app.route("/api/solve-puzzle", methods=["POST"])
 def solve_puzzle_endpoint():
     data = request.json
     puzzle = data.get("puzzle")
@@ -118,6 +123,14 @@ def solve_puzzle_endpoint():
         return jsonify(solution=solution)
     else:
         return jsonify(error="Puzzle cannot be solved"), 400
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_react_app(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, "index.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
