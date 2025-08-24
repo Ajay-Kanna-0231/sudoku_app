@@ -1,0 +1,22 @@
+# === Python / Flask backend ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env
+
+# === Logs ===
+*.log
+
+# === IDE / System files ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
