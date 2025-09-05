@@ -89,15 +89,30 @@ export default function App() {
     Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(0))
   );
 
+  const handleSolveClick = async () => {
+    try {
+      const response = await axios.post("/api/solve-puzzle", {
+        puzzle: puzzle,
+      });
+      setPuzzle(response.data.solution);
+    } catch (error) {
+      alert("Error solving puzzle: " + error.message);
+      console.error("Error solving puzzle:", error);
+    }
+  };
+
   return (
     <ChakraProvider>
-      {/* centers horizontally & vertically, full viewport height */}
       <Center minH="100vh" bg="gray.900" p={6}>
         <VStack spacing={6}>
           <DifficultyButtons setPuzzle={setPuzzle} />
+          <Button colorScheme="blue" onClick={handleSolveClick}>
+            Solve it fully
+          </Button>
           <SudokuBoard puzzle={puzzle} />
         </VStack>
       </Center>
     </ChakraProvider>
   );
+
 }
