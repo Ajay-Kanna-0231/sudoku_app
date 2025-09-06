@@ -62,53 +62,110 @@ def generate_full_solution():
     fill()
     return grid
 
-def count_solutions(grid):
-    """Count solutions (stop if >1)."""
-    solutions = [0]
+def count_solutions_limited(grid, limit=2):
+    """
+    Backtracks to count solutions up to `limit`.
+    Returns: number of solutions found (1 or 2 for our use).
+    Early-stops once it reaches `limit`.
+    """
+    count = 0
 
     def backtrack():
-        if solutions[0] > 1:   # early exit
+        nonlocal count
+        # early exit
+        if count >= limit:
             return
-        for r in range(GRID_SIZE):
-            for c in range(GRID_SIZE):
+        # find next empty
+        for r in range(9):
+            for c in range(9):
                 if grid[r][c] == 0:
                     for num in range(1, 10):
                         if is_valid(grid, r, c, num):
                             grid[r][c] = num
                             backtrack()
+                            if count >= limit:
+                                grid[r][c] = 0
+                                return
                             grid[r][c] = 0
-                    return
-        solutions[0] += 1
-        if solutions[0] > 1:
-            return
+                    return  # no number fits here => backtrack
+        # no empties => one full solution
+        count += 1
 
     backtrack()
-    return solutions[0]
+    return count
 
+def has_unique_solution(grid):
+    """Utility: True if exactly one solution, using early-stop counter."""
+    return count_solutions_limited(deepcopy(grid), limit=2) == 1
 
-def generate_puzzle(clues=30):
+def generate_puzzle_by_digging(clues=32, symmetric=True):
+    """
+    Classic dig-and-test:
+    - Start from a full solution.
+    - Remove entries (optionally in symmetric pairs).
+    - Keep removal only if puzzle remains uniquely solvable.
+    - Stop when target `clues` reached (or no more safe removals).
+    """
     solution = generate_full_solution()
     puzzle = deepcopy(solution)
 
-    cells = [(r, c) for r in range(GRID_SIZE) for c in range(GRID_SIZE)]
+    # List all cells
+    cells = [(r, c) for r in range(9) for c in range(9)]
     random.shuffle(cells)
 
-    for r, c in cells:
-        if sum(1 for row in puzzle for val in row if val != 0) <= clues:
-            break
+    def current_clues_count(g):
+        return sum(1 for row in g for v in row if v != 0)
 
-        removed = puzzle[r][c]
-        puzzle[r][c] = 0
-        if count_solutions(deepcopy(puzzle)) != 1:
-            puzzle[r][c] = removed  # restore if uniqueness lost
+    if symmetric:
+        processed = set()
+        for (r, c) in cells:
+            if (r, c) in processed:
+                continue
+            # 180-degree symmetry partner
+            sr, sc = 8 - r, 8 - c
+            to_try = [(r, c)]
+            if (sr, sc) != (r, c):
+                to_try.append((sr, sc))
+
+            # stop if removing this pair would go below target
+            if current_clues_count(puzzle) - len(to_try) < clues:
+                continue
+
+            # remove and test
+            removed_vals = []
+            for rr, cc in to_try:
+                removed_vals.append((rr, cc, puzzle[rr][cc]))
+                puzzle[rr][cc] = 0
+
+            if not has_unique_solution(puzzle):
+                # restore if uniqueness lost
+                for rr, cc, val in removed_vals:
+                    puzzle[rr][cc] = val
+            else:
+                processed.update(to_try)
+
+            if current_clues_count(puzzle) <= clues:
+                break
+    else:
+        for (r, c) in cells:
+            if current_clues_count(puzzle) <= clues:
+                break
+            saved = puzzle[r][c]
+            if saved == 0:
+                continue
+            puzzle[r][c] = 0
+            if not has_unique_solution(puzzle):
+                puzzle[r][c] = saved
 
     return puzzle, solution
 
 @app.route("/api/generate-puzzle", methods=["GET"])
 def generate_puzzle_endpoint():
     difficulty = request.args.get("difficulty", "medium").lower()
-    clues = {"easy": 36, "medium": 32, "hard": 28}.get(difficulty, 32)
-    puzzle, solution = generate_puzzle(clues=clues)
+    # tune these as you like
+    target_clues = {"easy": 36, "medium": 32, "hard": 28}.get(difficulty, 32)
+
+    puzzle, solution = generate_puzzle_by_digging(clues=target_clues, symmetric=True)
     return jsonify(puzzle=puzzle, solution=solution)
 
 @app.route("/api/solve-puzzle", methods=["POST"])

@@ -115,7 +115,7 @@ function SudokuBoard({ puzzle, setPuzzle }) {
 function DifficultyButtons({ setPuzzle, setSolution }) {
   const handleDifficultyClick = async (difficulty) => {
     try {
-      const response = await axios.get(`/api/generate-puzzle?difficulty=${difficulty}`);
+      const response = await axios.get(`api/generate-puzzle?difficulty=${difficulty}`);
       setPuzzle(response.data.puzzle);
       setSolution(response.data.solution);   // store solution too
     } catch (error) {
@@ -141,7 +141,7 @@ export default function App() {
 
   const handleSolveClick = async () => {
     try {
-      const response = await axios.post("/api/solve-puzzle", {
+      const response = await axios.post("api/solve-puzzle", {
         puzzle: puzzle,
       });
       setPuzzle(response.data.solution); // Update to match the backend response structure
